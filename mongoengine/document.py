@@ -97,11 +97,13 @@ class Document(BaseDocument):
                 object_id = collection.insert(doc, safe=safe, **write_options)
             elif '_id' in doc:
                 # Perform a set rather than a save - this will only save set fields
-                object_id = doc.pop('_id')
-                collection.update({'_id': object_id}, {"$set": doc}, upsert=True, safe=safe, **write_options)
+                to_update = self._delta()
+                object_id = to_update.pop('_id')
+                if to_update:
+                    collection.update({'_id': object_id}, {"$set": to_update}, upsert=True, safe=safe, **write_options)
 
                 # Find and unset any fields explicitly set to None
-                if hasattr(self, '_present_fields'):
+                if hasattr(self, '_present_fields') and doc:
                     removals = dict([(k, 1) for k in self._present_fields if k not in doc and k != '_id'])
                     if removals:
                         collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
@@ -114,7 +116,7 @@ class Document(BaseDocument):
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
-
+        self._set_fields = []
         signals.post_save.send(self, created=created)
 
     def delete(self, safe=False):
@@ -135,14 +137,6 @@ class Document(BaseDocument):
 
         signals.post_delete.send(self)
 
-    @classmethod
-    def register_delete_rule(cls, document_cls, field_name, rule):
-        """This method registers the delete rules to apply when removing this
-        object.
-        """
-        cls._meta['delete_rules'][(document_cls, field_name)] = rule
-
-
     def reload(self):
         """Reloads all attributes from the database.
 
@@ -152,6 +146,13 @@ class Document(BaseDocument):
         obj = self.__class__.objects(**{id_field: self[id_field]}).first()
         for field in self._fields:
             setattr(self, field, obj[field])
+
+    @classmethod
+    def register_delete_rule(cls, document_cls, field_name, rule):
+        """This method registers the delete rules to apply when removing this
+        object.
+        """
+        cls._meta['delete_rules'][(document_cls, field_name)] = rule
 
     @classmethod
     def drop_collection(cls):

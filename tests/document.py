@@ -873,6 +873,27 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, None)
 
+    def test_save_only_changed_fields(self):
+        """Ensure save only sets / unsets changed fields
+        """
+
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30)
+        person.save()
+        person.reload()
+
+        same_person = self.Person.objects.get()
+
+        person.age = 21
+        same_person.name = 'User'
+
+        person.save()
+        same_person.save()
+
+        person = self.Person.objects.get()
+        self.assertEquals(person.name, 'User')
+        self.assertEquals(person.age, 21)
+
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """
@@ -978,12 +999,19 @@ class DocumentTest(unittest.TestCase):
         promoted_employee.details.position = 'Senior Developer'
         promoted_employee.save()
 
-        collection = self.db[self.Person._meta['collection']]
-        employee_obj = collection.find_one({'name': 'Test Employee'})
-        self.assertEqual(employee_obj['name'], 'Test Employee')
-        self.assertEqual(employee_obj['age'], 50)
+        promoted_employee.reload()
+        self.assertEqual(promoted_employee.name, 'Test Employee')
+        self.assertEqual(promoted_employee.age, 50)
         # Ensure that the 'details' embedded object saved correctly
-        self.assertEqual(employee_obj['details']['position'], 'Senior Developer')
+        self.assertEqual(promoted_employee.details.position, 'Senior Developer')
+
+        # Test removal
+        promoted_employee.details = None
+        promoted_employee.save()
+
+        promoted_employee.reload()
+        self.assertEqual(promoted_employee.details, None)
+
 
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.

@@ -92,9 +92,7 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
         instance._data[self.name] = value
-        # If the field set is in the _present_fields list add it so we can track
-        if hasattr(instance, '_present_fields') and self.name not in instance._present_fields:
-            instance._present_fields.append(self.name)
+        instance._mark_as_set(self.name)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -751,7 +749,70 @@ class BaseDocument(object):
 
         obj = cls(**data)
         obj._present_fields = present_fields
+        obj._set_fields = []
         return obj
+
+    def _mark_as_set(self, key):
+        """Marks a key as explicitly set by the user
+        """
+        return
+        # If the field set is in the _present_fields list add it so we can track
+        if hasattr(self, '_present_fields') and key and key not in self._present_fields:
+            self._present_fields.append(key)
+        if hasattr(self, '_set_fields') and key not in self._set_fields:
+            self._set_fields.append(key)
+
+    def _get_set_fields(self, key=''):
+        """Returns a list of all fields that have explicitly been set.
+        """
+        from mongoengine import EmbeddedDocument
+        _set_fields = []
+        _set_fields += getattr(self, '_set_fields', [])
+
+        for field_name in self._fields:
+            key = '%s.' % field_name
+            field = getattr(self, field_name, None)
+            if isinstance(field, EmbeddedDocument):  # Grab all embedded fields that have been changed
+                _set_fields += ["%s%s" % (key, k) for k in field._get_set_fields(key) if k]
+            elif isinstance(field, (list, tuple)):  # Loop list fields as they contain documents
+                for index, value in enumerate(field):
+                    if not hasattr(value, '_get_set_fields'):
+                        continue
+                    list_key = "%s%s." % (key, index)
+                    _set_fields += ["%s%s" % (list_key, k) for k in value._get_set_fields(list_key) if k]
+        return _set_fields
+
+    def _delta(self, set_fields=None, core_fields=None, key=None, doc=None):
+        # If we don't have a key and don't have _set_fields
+        # Then you are saving a new object that happens to have an pk
+        if not key and not hasattr(self, '_set_fields'):
+            return self.to_mongo()
+
+        set_fields = set_fields or self._get_set_fields()
+        core_fields = core_fields or ['_id', '_types', '_cls', '_ref']
+        key = key if key is not None else ''
+        doc = doc if doc is not None else self.to_mongo()
+        delta = {}
+        for k,v in doc.iteritems():
+            if key:
+                path = "%s.%s" % (key, k)
+            else:
+                path = k
+            if isinstance(v, dict):
+                delta[k] = self._delta(set_fields, core_fields, k,v)
+            elif isinstance(v, (list, tuple)):
+                values = []
+                for index, value in enumerate(v):
+                    list_key = "%s.%s" % (path, index)
+                    if isinstance(value, basestring):
+                        if list_key in set_fields or k in core_fields:
+                            values.append(value)
+                    else:
+                        values.append(self._delta(set_fields, core_fields, list_key, value))
+                delta[k] = values
+            elif path in set_fields or k in core_fields:
+                delta[k] = v
+        return delta
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):

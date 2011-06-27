@@ -6,6 +6,7 @@ import connection
 from connection import *
 import queryset
 from queryset import *
+from document import database
 
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
            queryset.__all__)

@@ -4,6 +4,9 @@ import pymongo
 
 from mongoengine import *
 from mongoengine.connection import _get_db
+from mongoengine import database
+
+
 
 
 class DocumentTest(unittest.TestCase):
@@ -12,6 +15,7 @@ class DocumentTest(unittest.TestCase):
         connect(db='mongoenginetest')
         self.db = _get_db()
 
+        @database('test')
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -25,9 +29,15 @@ class DocumentTest(unittest.TestCase):
         collection = self.Person._meta['collection']
         self.assertTrue(collection in self.db.collection_names())
 
-        self.Person.drop_collection()
+        self.Person.drop_collection(is_sure=True)
         self.assertFalse(collection in self.db.collection_names())
 
+
+    def test_dbname(self):
+        self.Person(name='Test').save()
+        print self.Person.dbname
+        self.Person.drop_collection(is_sure=True)
+        
     def test_definition(self):
         """Ensure that document may be defined using fields.
         """
@@ -114,7 +124,7 @@ class DocumentTest(unittest.TestCase):
         classes = [obj.__class__ for obj in Human.objects]
         self.assertEqual(classes, [Human])
 
-        Animal.drop_collection()
+        Animal.drop_collection(is_sure=True)
 
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
@@ -140,7 +150,7 @@ class DocumentTest(unittest.TestCase):
             meta = {'allow_inheritance': False}
             name = StringField()
 
-        Animal.drop_collection()
+        Animal.drop_collection(is_sure=True)
 
         def create_dog_class():
             class Dog(Animal):
@@ -155,7 +165,7 @@ class DocumentTest(unittest.TestCase):
         self.assertFalse('_cls' in obj)
         self.assertFalse('_types' in obj)
 
-        Animal.drop_collection()
+        Animal.drop_collection(is_sure=True)
 
         def create_employee_class():
             class Employee(self.Person):
@@ -197,7 +207,7 @@ class DocumentTest(unittest.TestCase):
         user_obj = Person.objects[0]
         self.assertEqual(user_obj.name, "Test User")
 
-        Person.drop_collection()
+        Person.drop_collection(is_sure=True)
         self.assertFalse(collection in self.db.collection_names())
 
     def test_inherited_collections(self):
@@ -212,9 +222,9 @@ class DocumentTest(unittest.TestCase):
         class Drinker(Document):
             drink = GenericReferenceField()
 
-        Drink.drop_collection()
-        AlcoholicDrink.drop_collection()
-        Drinker.drop_collection()
+        Drink.drop_collection(is_sure=True)
+        AlcoholicDrink.drop_collection(is_sure=True)
+        Drinker.drop_collection(is_sure=True)
 
         red_bull = Drink(name='Red Bull')
         red_bull.save()
@@ -241,7 +251,7 @@ class DocumentTest(unittest.TestCase):
                 'max_size': 90000,
             }
 
-        Log.drop_collection()
+        Log.drop_collection(is_sure=True)
 
         # Ensure that the collection handles up to its maximum
         for i in range(10):
@@ -269,7 +279,7 @@ class DocumentTest(unittest.TestCase):
             Log.objects
         self.assertRaises(InvalidCollectionError, recreate_log_document)
 
-        Log.drop_collection()
+        Log.drop_collection(is_sure=True)
 
     def test_indexes(self):
         """Ensure that indexes are used when meta[indexes] is specified.
@@ -286,7 +296,7 @@ class DocumentTest(unittest.TestCase):
                 ],
             }
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         info = BlogPost.objects._collection.index_information()
         # _id, types, '-date', 'tags', ('cat', 'date')
@@ -306,7 +316,7 @@ class DocumentTest(unittest.TestCase):
             title = StringField()
             meta = {'indexes': ['title']}
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         list(ExtendedBlogPost.objects)
         info = ExtendedBlogPost.objects._collection.index_information()
@@ -316,7 +326,7 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         self.assertTrue([('_types', 1), ('title', 1)] in info)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
@@ -325,7 +335,7 @@ class DocumentTest(unittest.TestCase):
             title = StringField()
             slug = StringField(unique=True)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post1 = BlogPost(title='test1', slug='test')
         post1.save()
@@ -342,7 +352,7 @@ class DocumentTest(unittest.TestCase):
             date = EmbeddedDocumentField(Date)
             slug = StringField(unique_with='date.year')
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post1 = BlogPost(title='test1', date=Date(year=2009), slug='test')
         post1.save()
@@ -355,7 +365,7 @@ class DocumentTest(unittest.TestCase):
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
         self.assertRaises(OperationError, post3.save)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
@@ -364,7 +374,7 @@ class DocumentTest(unittest.TestCase):
             username = StringField(primary_key=True)
             name = StringField()
 
-        User.drop_collection()
+        User.drop_collection(is_sure=True)
 
         self.assertEqual(User._fields['username'].db_field, '_id')
         self.assertEqual(User._meta['id_field'], 'username')
@@ -392,7 +402,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(user_son['_id'], 'test')
         self.assertTrue('username' not in user_son['_id'])
         
-        User.drop_collection()
+        User.drop_collection(is_sure=True)
         
         user = User(pk='mongo', name='mongo user')
         user.save()
@@ -405,7 +415,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(user_son['_id'], 'mongo')
         self.assertTrue('username' not in user_son['_id'])
         
-        User.drop_collection()
+        User.drop_collection(is_sure=True)
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
@@ -548,7 +558,7 @@ class DocumentTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post = BlogPost(content='Went for a walk today...')
         post.tags = tags = ['fun', 'leisure']
@@ -562,7 +572,7 @@ class DocumentTest(unittest.TestCase):
         for comment_obj, comment in zip(post_obj['comments'], comments):
             self.assertEqual(comment_obj['content'], comment['content'])
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be 
@@ -597,7 +607,7 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
             author = ReferenceField(self.Person)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         author = self.Person(name='Test User')
         author.save()
@@ -622,10 +632,10 @@ class DocumentTest(unittest.TestCase):
         author = list(self.Person.objects(name='Test User'))[-1]
         self.assertEqual(author.age, 25)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def tearDown(self):
-        self.Person.drop_collection()
+        self.Person.drop_collection(is_sure=True)
 
     def test_document_hash(self):
         """Test document in list, dict, set
@@ -637,8 +647,8 @@ class DocumentTest(unittest.TestCase):
             pass
         
         # Clear old datas
-        User.drop_collection()
-        BlogPost.drop_collection()
+        User.drop_collection(is_sure=True)
+        BlogPost.drop_collection(is_sure=True)
 
         u1 = User.objects.create()
         u2 = User.objects.create()

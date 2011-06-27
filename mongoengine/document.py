@@ -1,7 +1,7 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
 from queryset import OperationError
-from connection import _get_db
+from connection import _get_db,_get_connection
 
 import pymongo
 
@@ -17,6 +17,7 @@ class EmbeddedDocument(BaseDocument):
     """
 
     __metaclass__ = DocumentMetaclass
+    
 
 
 class Document(BaseDocument):
@@ -109,8 +110,30 @@ class Document(BaseDocument):
         obj = self.__class__.objects(**{id_field: self[id_field]}).first()
         for field in self._fields:
             setattr(self, field, obj[field])
+    
+    def _get_db():
+        return self.dbname
+    
+    def _get_collection():
+        pass
+        
+    @classmethod
+    def drop_collection(cls,is_sure=False):
+        """Drops the entire collection associated with this
+        :class:`~mongoengine.Document` type from the database.
+        """
+        if is_sure:
+           db = _get_db()
+           db.drop_collection(cls._meta['collection'])
+    
 
+def database(dbname):
 
+    def f(doc):
+        doc.dbname = dbname
+        return doc
+
+    return f
 
 class MapReduceDocument(object):
     """A document returned from a map/reduce query.

@@ -110,13 +110,6 @@ class Document(BaseDocument):
         for field in self._fields:
             setattr(self, field, obj[field])
 
-    @classmethod
-    def drop_collection(cls):
-        """Drops the entire collection associated with this
-        :class:`~mongoengine.Document` type from the database.
-        """
-        db = _get_db()
-        db.drop_collection(cls._meta['collection'])
 
 
 class MapReduceDocument(object):

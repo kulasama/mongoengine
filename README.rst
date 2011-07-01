@@ -28,14 +28,17 @@ Examples
 ========
 Some simple examples of what MongoEngine code looks like::
 
+    @database('test')
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
         posted = DateTimeField(default=datetime.datetime.now)
         tags = ListField(StringField(max_length=50))
-
+ 
+    @database('test')
     class TextPost(BlogPost):
         content = StringField(required=True)
 
+    @database('test')
     class LinkPost(BlogPost):
         url = StringField(required=True)
 

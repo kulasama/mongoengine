@@ -307,7 +307,7 @@ class ListField(BaseField):
                 for value in value_list:
                     # Dereference DBRefs
                     if isinstance(value, (pymongo.dbref.DBRef)):
-                        value = _get_db().dereference(value)
+                        value = _get_db(instance.dbname).dereference(value)
                         deref_list.append(referenced_type._from_son(value))
                     else:
                         deref_list.append(value)
@@ -445,7 +445,7 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (pymongo.dbref.DBRef)):
-            value = _get_db().dereference(value)
+            value = _get_db(instance.dbname).dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
 
@@ -498,7 +498,7 @@ class GenericReferenceField(BaseField):
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
         reference = value['_ref']
-        doc = _get_db().dereference(reference)
+        doc = _get_db(doc_cls.dbname).dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
         return doc
@@ -557,8 +557,8 @@ class GridFSProxy(object):
     .. versionadded:: 0.4
     """
 
-    def __init__(self, grid_id=None):
-        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
+    def __init__(self,grid_id=None,dbname=None):
+        self.fs = gridfs.GridFS(_get_db(dbname))  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
 
@@ -643,7 +643,9 @@ class FileField(BaseField):
         self.grid_file = grid_file
         if self.grid_file:
             return self.grid_file
-        return GridFSProxy()
+        self.dbname = instance.dbname
+
+        return GridFSProxy(dbname=instance.dbname)
 
     def __set__(self, instance, value):
         if isinstance(value, file) or isinstance(value, str):
@@ -659,7 +661,7 @@ class FileField(BaseField):
                 grid_file.put(value)
             else:
                 # Create a new proxy object as we don't already have one
-                instance._data[self.name] = GridFSProxy()
+                instance._data[self.name] = GridFSProxy(self.dbname)
                 instance._data[self.name].put(value)
         else:
             instance._data[self.name] = value
@@ -672,7 +674,7 @@ class FileField(BaseField):
 
     def to_python(self, value):
         if value is not None:
-            return GridFSProxy(value)
+            return GridFSProxy(value,self.dbname)
 
     def validate(self, value):
         if value.grid_id is not None:

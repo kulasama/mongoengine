@@ -14,6 +14,18 @@ def get_document(name):
 
 class ValidationError(Exception):
     pass
+    
+def database(dbname):
+
+    def f(doc):
+        doc.dbname = dbname
+       
+        # Provide a default queryset unless one has been manually provided
+        if not hasattr(doc, 'objects'):
+            doc.objects = QuerySetManager()
+        return doc
+        
+    return f
 
 
 class BaseField(object):
@@ -269,10 +281,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
 
-        # Provide a default queryset unless one has been manually provided
-        if not hasattr(new_class, 'objects'):
-            new_class.objects = QuerySetManager()
-
+        
         user_indexes = [QuerySet._build_index_spec(new_class, spec)
                         for spec in meta['indexes']] + base_indexes
         new_class._meta['indexes'] = user_indexes
@@ -452,6 +461,8 @@ class BaseDocument(object):
         """
         # get the class name from the document, falling back to the given
         # class if unavailable
+        if son is None:
+            print son,cls
         class_name = son.get(u'_cls', cls._class_name)
 
         data = dict((str(key), value) for key, value in son.items())

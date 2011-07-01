@@ -7,17 +7,19 @@ import gridfs
 
 from mongoengine import *
 from mongoengine.connection import _get_db
+from mongoengine import database
 
 
 class FieldTest(unittest.TestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = _get_db()
+        connect()
+        self.db = _get_db('mongoenginetest')
 
     def test_default_values(self):
         """Ensure that default field values are used when creating a document.
         """
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField()
             age = IntField(default=30)
@@ -30,6 +32,7 @@ class FieldTest(unittest.TestCase):
     def test_required_values(self):
         """Ensure that required field constraints are enforced.
         """
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField(required=True)
             age = IntField(required=True)
@@ -43,6 +46,7 @@ class FieldTest(unittest.TestCase):
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField()
         
@@ -61,6 +65,7 @@ class FieldTest(unittest.TestCase):
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField(max_length=20)
             userid = StringField(r'[0-9a-z_]+$')
@@ -86,6 +91,7 @@ class FieldTest(unittest.TestCase):
     def test_url_validation(self):
         """Ensure that URLFields validate urls properly.
         """
+        @database('mongoenginetest')
         class Link(Document):
             url = URLField()
 
@@ -99,6 +105,7 @@ class FieldTest(unittest.TestCase):
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             age = IntField(min_value=0, max_value=110)
 
@@ -116,6 +123,7 @@ class FieldTest(unittest.TestCase):
     def test_float_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             height = FloatField(min_value=0.1, max_value=3.5)
 
@@ -133,11 +141,12 @@ class FieldTest(unittest.TestCase):
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             height = DecimalField(min_value=Decimal('0.1'), 
                                   max_value=Decimal('3.5'))
 
-        Person.drop_collection()
+        Person.drop_collection(is_sure=True)
 
         person = Person()
         person.height = Decimal('1.89')
@@ -154,11 +163,12 @@ class FieldTest(unittest.TestCase):
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
 
-        Person.drop_collection()
+        Person.drop_collection(is_sure=True)
 
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
         """
+        @database('mongoenginetest')
         class Person(Document):
             admin = BooleanField()
 
@@ -174,6 +184,7 @@ class FieldTest(unittest.TestCase):
     def test_datetime_validation(self):
         """Ensure that invalid values cannot be assigned to datetime fields.
         """
+        @database('mongoenginetest')
         class LogEntry(Document):
             time = DateTimeField()
 
@@ -189,12 +200,15 @@ class FieldTest(unittest.TestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
+        @database('mongoenginetest')
         class User(Document):
             pass
 
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             content = StringField()
-
+            
+        @database('mongoenginetest')
         class BlogPost(Document):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
@@ -232,10 +246,12 @@ class FieldTest(unittest.TestCase):
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
         """
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             order = IntField()
             content = StringField()
-
+    
+        @database('mongoenginetest')
         class BlogPost(Document):
             content = StringField()
             comments = SortedListField(EmbeddedDocumentField(Comment),
@@ -259,11 +275,12 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(post.comments[0].content, comment2.content)
         self.assertEqual(post.comments[1].content, comment1.content)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_dict_validation(self):
         """Ensure that dict types work as expected.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             info = DictField()
 
@@ -287,13 +304,16 @@ class FieldTest(unittest.TestCase):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
         """
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             content = StringField()
 
+        @database('mongoenginetest')
         class PersonPreferences(EmbeddedDocument):
             food = StringField(required=True)
             number = IntField()
-
+        
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField()
             preferences = EmbeddedDocumentField(PersonPreferences)
@@ -318,12 +338,15 @@ class FieldTest(unittest.TestCase):
         """Ensure that subclasses of embedded documents may be provided to 
         EmbeddedDocumentFields of the superclass' type.
         """
+        @database('mongoenginetest')
         class User(EmbeddedDocument):
             name = StringField()
-
+ 
+        @database('mongoenginetest')
         class PowerUser(User):
             power = IntField()
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             content = StringField()
             author = EmbeddedDocumentField(User)
@@ -336,15 +359,17 @@ class FieldTest(unittest.TestCase):
         """Ensure that invalid docment objects cannot be assigned to reference
         fields.
         """
+        @database('mongoenginetest')
         class User(Document):
             name = StringField()
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(User)
 
-        User.drop_collection()
-        BlogPost.drop_collection()
+        User.drop_collection(is_sure=True)
+        BlogPost.drop_collection(is_sure=True)
 
         self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
 
@@ -368,20 +393,22 @@ class FieldTest(unittest.TestCase):
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
-        User.drop_collection()
-        BlogPost.drop_collection()
+        User.drop_collection(is_sure=True)
+        BlogPost.drop_collection(is_sure=True)
     
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
+        @database('mongoenginetest')
         class User(Document):
             name = StringField()
 
+        @database('mongoenginetest')
         class Group(Document):
             members = ListField(ReferenceField(User))
 
-        User.drop_collection()
-        Group.drop_collection()
+        User.drop_collection(is_sure=True)
+        Group.drop_collection(is_sure=True)
 
         user1 = User(name='user1')
         user1.save()
@@ -396,12 +423,13 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(group_obj.members[0].name, user1.name)
         self.assertEqual(group_obj.members[1].name, user2.name)
 
-        User.drop_collection()
-        Group.drop_collection()
+        User.drop_collection(is_sure=True)
+        Group.drop_collection(is_sure=True)
 
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
         """
+        @database('mongoenginetest')
         class Employee(Document):
             name = StringField()
             boss = ReferenceField('self')
@@ -427,10 +455,12 @@ class FieldTest(unittest.TestCase):
     def test_recursive_embedding(self):
         """Ensure that EmbeddedDocumentFields can contain their own documents.
         """
+        @database('mongoenginetest')
         class Tree(Document):
             name = StringField()
             children = ListField(EmbeddedDocumentField('TreeNode'))
 
+        @database('mongoenginetest')
         class TreeNode(EmbeddedDocument):
             name = StringField()
             children = ListField(EmbeddedDocumentField('self'))
@@ -457,10 +487,12 @@ class FieldTest(unittest.TestCase):
     def test_undefined_reference(self):
         """Ensure that ReferenceFields may reference undefined Documents.
         """
+        @database('mongoenginetest')
         class Product(Document):
             name = StringField()
             company = ReferenceField('Company')
 
+        @database('mongoenginetest')
         class Company(Document):
             name = StringField()
 
@@ -477,15 +509,17 @@ class FieldTest(unittest.TestCase):
         """Ensure that ReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.
         """
+        @database('mongoenginetest')
         class Member(Document):
             user_num = IntField(primary_key=True)
-
+ 
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
             author = ReferenceField(Member)
 
-        Member.drop_collection()
-        BlogPost.drop_collection()
+        Member.drop_collection(is_sure=True)
+        BlogPost.drop_collection(is_sure=True)
 
         m1 = Member(user_num=1)
         m1.save()
@@ -504,25 +538,28 @@ class FieldTest(unittest.TestCase):
         post = BlogPost.objects(author=m2).first()
         self.assertEqual(post.id, post2.id)
 
-        Member.drop_collection()
-        BlogPost.drop_collection()
+        Member.drop_collection(is_sure=True)
+        BlogPost.drop_collection(is_sure=True)
         
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
         """
+        @database('mongoenginetest')
         class Link(Document):
             title = StringField()
             meta = {'allow_inheritance': False}
-            
+           
+        @database('mongoenginetest') 
         class Post(Document):
             title = StringField()
-            
+        
+        @database('mongoenginetest')   
         class Bookmark(Document):
             bookmark_object = GenericReferenceField()
             
-        Link.drop_collection()
-        Post.drop_collection()
-        Bookmark.drop_collection()
+        Link.drop_collection(is_sure=True)
+        Post.drop_collection(is_sure=True)
+        Bookmark.drop_collection(is_sure=True)
     
         link_1 = Link(title="Pitchfork")
         link_1.save()
@@ -546,25 +583,28 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(bm.bookmark_object, link_1)
         self.assertTrue(isinstance(bm.bookmark_object, Link))
     
-        Link.drop_collection()
-        Post.drop_collection()
-        Bookmark.drop_collection()
+        Link.drop_collection(is_sure=True)
+        Post.drop_collection(is_sure=True)
+        Bookmark.drop_collection(is_sure=True)
 
     def test_generic_reference_list(self):
         """Ensure that a ListField properly dereferences generic references.
         """
+        @database('mongoenginetest')
         class Link(Document):
             title = StringField()
-    
+            
+        @database('mongoenginetest')
         class Post(Document):
             title = StringField()
-    
+        
+        @database('mongoenginetest')
         class User(Document):
             bookmarks = ListField(GenericReferenceField())
     
-        Link.drop_collection()
-        Post.drop_collection()
-        User.drop_collection()
+        Link.drop_collection(is_sure=True)
+        Post.drop_collection(is_sure=True)
+        User.drop_collection(is_sure=True)
     
         link_1 = Link(title="Pitchfork")
         link_1.save()
@@ -580,13 +620,14 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(user.bookmarks[0], post_1)
         self.assertEqual(user.bookmarks[1], link_1)
         
-        Link.drop_collection()
-        Post.drop_collection()
-        User.drop_collection()
+        Link.drop_collection(is_sure=True)
+        Post.drop_collection(is_sure=True)
+        User.drop_collection(is_sure=True)
 
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
+        @database('mongoenginetest')
         class Attachment(Document):
             content_type = StringField()
             blob = BinaryField()
@@ -594,7 +635,7 @@ class FieldTest(unittest.TestCase):
         BLOB = '\xe6\x00\xc4\xff\x07'
         MIME_TYPE = 'application/octet-stream'
 
-        Attachment.drop_collection()
+        Attachment.drop_collection(is_sure=True)
 
         attachment = Attachment(content_type=MIME_TYPE, blob=BLOB)
         attachment.save()
@@ -603,23 +644,26 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
         self.assertEqual(BLOB, attachment_1.blob)
 
-        Attachment.drop_collection()
+        Attachment.drop_collection(is_sure=True)
 
     def test_binary_validation(self):
         """Ensure that invalid values cannot be assigned to binary fields.
         """
+        @database('mongoenginetest')
         class Attachment(Document):
             blob = BinaryField()
 
+        @database('mongoenginetest')
         class AttachmentRequired(Document):
             blob = BinaryField(required=True)
 
+        @database('mongoenginetest')
         class AttachmentSizeLimit(Document):
             blob = BinaryField(max_bytes=4)
 
-        Attachment.drop_collection()
-        AttachmentRequired.drop_collection()
-        AttachmentSizeLimit.drop_collection()
+        Attachment.drop_collection(is_sure=True)
+        AttachmentRequired.drop_collection(is_sure=True)
+        AttachmentSizeLimit.drop_collection(is_sure=True)
 
         attachment = Attachment()
         attachment.validate()
@@ -636,17 +680,18 @@ class FieldTest(unittest.TestCase):
         attachment_size_limit.blob = '\xe6\x00\xc4\xff'
         attachment_size_limit.validate()
 
-        Attachment.drop_collection()
-        AttachmentRequired.drop_collection()
-        AttachmentSizeLimit.drop_collection()
+        Attachment.drop_collection(is_sure=True)
+        AttachmentRequired.drop_collection(is_sure=True)
+        AttachmentSizeLimit.drop_collection(is_sure=True)
 
     def test_choices_validation(self):
         """Ensure that value is in a container of allowed values.
         """
+        @database('mongoenginetest')
         class Shirt(Document):
             size = StringField(max_length=3, choices=('S','M','L','XL','XXL'))
 
-        Shirt.drop_collection()
+        Shirt.drop_collection(is_sure=True)
 
         shirt = Shirt()
         shirt.validate()
@@ -657,17 +702,20 @@ class FieldTest(unittest.TestCase):
         shirt.size = "XS"
         self.assertRaises(ValidationError, shirt.validate)
 
-        Shirt.drop_collection()
+        Shirt.drop_collection(is_sure=True)
 
     def test_file_fields(self):
         """Ensure that file fields can be written to and their data retrieved
         """
+        @database('mongoenginetest')
         class PutFile(Document):
             file = FileField()
 
+        @database('mongoenginetest')
         class StreamFile(Document):
             file = FileField()
 
+        @database('mongoenginetest')
         class SetFile(Document):
             file = FileField()
 
@@ -675,9 +723,9 @@ class FieldTest(unittest.TestCase):
         more_text = 'Foo Bar'
         content_type = 'text/plain'
 
-        PutFile.drop_collection()
-        StreamFile.drop_collection()
-        SetFile.drop_collection()
+        PutFile.drop_collection(is_sure=True)
+        StreamFile.drop_collection(is_sure=True)
+        SetFile.drop_collection(is_sure=True)
 
         putfile = PutFile()
         putfile.file.put(text, content_type=content_type)
@@ -722,11 +770,12 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(result.file.read(), more_text)
         result.file.delete() 
 
-        PutFile.drop_collection()
-        StreamFile.drop_collection()
-        SetFile.drop_collection()
+        PutFile.drop_collection(is_sure=True)
+        StreamFile.drop_collection(is_sure=True)
+        SetFile.drop_collection(is_sure=True)
 
         # Make sure FileField is optional and not required
+        @database('mongoenginetest')
         class DemoFile(Document):
             file = FileField()
         d = DemoFile.objects.create()
@@ -734,6 +783,7 @@ class FieldTest(unittest.TestCase):
     def test_file_uniqueness(self):
         """Ensure that each instance of a FileField is unique
         """
+        @database('mongoenginetest')
         class TestFile(Document):
             name = StringField()
             file = FileField()
@@ -751,16 +801,17 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(testfile.name != testfiledupe.name)
         self.assertTrue(testfile.file.read() != data)
 
-        TestFile.drop_collection()
+        TestFile.drop_collection(is_sure=True)
 
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
+        @database('mongoenginetest')
         class Event(Document):
             title = StringField()
             location = GeoPointField()
 
-        Event.drop_collection()
+        Event.drop_collection(is_sure=True)
         event = Event(title="Coltrane Motion @ Double Door",
                       location=[41.909889, -87.677137])
         event.save()
@@ -769,10 +820,11 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(u'location_2d' in info)
         self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
 
-        Event.drop_collection()
+        Event.drop_collection(is_sure=True)
 
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
+        @database('mongoenginetest')
         class D(Document):
             data = DictField()
             data2 = DictField(default=lambda: {})

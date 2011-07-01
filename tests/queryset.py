@@ -8,13 +8,15 @@ from datetime import datetime, timedelta
 from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
                                   DoesNotExist)
 from mongoengine import *
+from mongoengine import database
 
 
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-
+        connect()
+        
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -166,17 +168,20 @@ class QuerySetTest(unittest.TestCase):
     def test_find_array_position(self):
         """Ensure that query by array position works.
         """
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             name = StringField()
-
+            
+        @database('mongoenginetest')
         class Post(EmbeddedDocument):
             comments = ListField(EmbeddedDocumentField(Comment))
-
+        
+        @database('mongoenginetest')
         class Blog(Document):
             tags = ListField(StringField())
             posts = ListField(EmbeddedDocumentField(Post))
 
-        Blog.drop_collection()
+        Blog.drop_collection(is_sure=True)
         
         Blog.objects.create(tags=['a', 'b'])
         self.assertEqual(len(Blog.objects(tags__0='a')), 1)
@@ -184,7 +189,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(Blog.objects(tags__1='a')), 0)
         self.assertEqual(len(Blog.objects(tags__1='b')), 1)
 
-        Blog.drop_collection()
+        Blog.drop_collection(is_sure=True)
 
         comment1 = Comment(name='testa')
         comment2 = Comment(name='testb')
@@ -205,7 +210,7 @@ class QuerySetTest(unittest.TestCase):
         query = Blog.objects(posts__0__comments__1__name='testa')
         self.assertEqual(len(query), 0)
 
-        Blog.drop_collection()
+        Blog.drop_collection(is_sure=True)
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
@@ -352,7 +357,8 @@ class QuerySetTest(unittest.TestCase):
         """Ensure filters can be chained together.
         """
         from datetime import datetime
-
+        
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
             is_published = BooleanField()
@@ -382,11 +388,12 @@ class QuerySetTest(unittest.TestCase):
             published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
         self.assertEqual(published_posts.count(), 2)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
             published_date = DateTimeField()
@@ -395,7 +402,7 @@ class QuerySetTest(unittest.TestCase):
                 'ordering': ['-published_date']
             }
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         blog_post_1 = BlogPost(title="Blog Post #1",
                                published_date=datetime(2010, 1, 5, 0, 0 ,0))
@@ -417,7 +424,7 @@ class QuerySetTest(unittest.TestCase):
         first_post = BlogPost.objects.order_by("+published_date").first()
         self.assertEqual(first_post.title, "Blog Post #1")
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
@@ -455,14 +462,16 @@ class QuerySetTest(unittest.TestCase):
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
+        @database('mongoenginetest')
         class User(EmbeddedDocument):
             name = StringField()
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             content = StringField()
             author = EmbeddedDocumentField(User)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post = BlogPost(content='Had a good coffee today...')
         post.author = User(name='Test User')
@@ -472,15 +481,16 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_find_dict_item(self):
         """Ensure that DictField items may be found.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             info = DictField()
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post = BlogPost(info={'title': 'test'})
         post.save()
@@ -488,16 +498,17 @@ class QuerySetTest(unittest.TestCase):
         post_obj = BlogPost.objects(info__title='test').first()
         self.assertEqual(post_obj.id, post.id)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_q(self):
         """Ensure that Q objects may be used to query for documents.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             publish_date = DateTimeField()
             published = BooleanField()
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post1 = BlogPost(publish_date=datetime(2010, 1, 8), published=False)
         post1.save()
@@ -531,7 +542,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertFalse(any(obj.id in posts for obj in [post5, post6]))
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         # Check the 'in' operator
         self.Person(name='user1', age=20).save()
@@ -566,10 +577,11 @@ class QuerySetTest(unittest.TestCase):
     def test_q_lists(self):
         """Ensure that Q objects query ListFields correctly.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             tags = ListField(StringField())
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         BlogPost(tags=['python', 'mongo']).save()
         BlogPost(tags=['python']).save()
@@ -577,16 +589,17 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(BlogPost.objects(Q(tags='mongo'))), 1)
         self.assertEqual(len(BlogPost.objects(Q(tags='python'))), 2)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             hits = IntField()
             published = BooleanField()
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post1 = BlogPost(hits=1, published=False)
         post1.save()
@@ -621,20 +634,22 @@ class QuerySetTest(unittest.TestCase):
         c = BlogPost.objects(Q(published=False)).exec_js(js_func, 'hits')
         self.assertEqual(c, 1)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_exec_js_field_sub(self):
         """Ensure that field substitutions occur properly in exec_js functions.
         """
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             content = StringField(db_field='body')
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             name = StringField(db_field='doc-name')
             comments = ListField(EmbeddedDocumentField(Comment), 
                                  db_field='cmnts')
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         comments1 = [Comment(content='cool'), Comment(content='yay')]
         post1 = BlogPost(name='post1', comments=comments1)
@@ -674,7 +689,7 @@ class QuerySetTest(unittest.TestCase):
         ]
         self.assertEqual(results, expected_results)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_delete(self):
         """Ensure that documents are properly deleted from the database.
@@ -694,12 +709,13 @@ class QuerySetTest(unittest.TestCase):
     def test_update(self):
         """Ensure that atomic updates work properly.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
             hits = IntField()
             tags = ListField(StringField())
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post = BlogPost(name="Test Post", hits=5, tags=['test'])
         post.save()
@@ -734,11 +750,12 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags.count('unique'), 1)
         
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_update_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             slug = StringField()
             tags = ListField(StringField())
@@ -770,218 +787,16 @@ class QuerySetTest(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
-    def test_map_reduce(self):
-        """Ensure map/reduce is both mapping and reducing.
-        """
-        class BlogPost(Document):
-            title = StringField()
-            tags = ListField(StringField(), db_field='post-tag-list')
-
-        BlogPost.drop_collection()
-
-        BlogPost(title="Post #1", tags=['music', 'film', 'print']).save()
-        BlogPost(title="Post #2", tags=['music', 'film']).save()
-        BlogPost(title="Post #3", tags=['film', 'photography']).save()
-
-        map_f = """
-            function() {
-                this[~tags].forEach(function(tag) {
-                    emit(tag, 1);
-                });
-            }
-        """
-
-        reduce_f = """
-            function(key, values) {
-                var total = 0;
-                for(var i=0; i<values.length; i++) {
-                    total += values[i];
-                }
-                return total;
-            }
-        """
-
-        # run a map/reduce operation spanning all posts
-        results = BlogPost.objects.map_reduce(map_f, reduce_f)
-        results = list(results)
-        self.assertEqual(len(results), 4)
-
-        music = filter(lambda r: r.key == "music", results)[0]
-        self.assertEqual(music.value, 2)
-
-        film = filter(lambda r: r.key == "film", results)[0]
-        self.assertEqual(film.value, 3)
-
-        BlogPost.drop_collection()
-        
-    def test_map_reduce_with_custom_object_ids(self):
-        """Ensure that QuerySet.map_reduce works properly with custom
-        primary keys.
-        """
-
-        class BlogPost(Document):
-            title = StringField(primary_key=True)
-            tags = ListField(StringField())
-        
-        post1 = BlogPost(title="Post #1", tags=["mongodb", "mongoengine"])
-        post2 = BlogPost(title="Post #2", tags=["django", "mongodb"])
-        post3 = BlogPost(title="Post #3", tags=["hitchcock films"])
-        
-        post1.save()
-        post2.save()
-        post3.save()
-        
-        self.assertEqual(BlogPost._fields['title'].db_field, '_id')
-        self.assertEqual(BlogPost._meta['id_field'], 'title')
-        
-        map_f = """
-            function() {
-                emit(this._id, 1);
-            }
-        """
-        
-        # reduce to a list of tag ids and counts
-        reduce_f = """
-            function(key, values) {
-                var total = 0;
-                for(var i=0; i<values.length; i++) {
-                    total += values[i];
-                }
-                return total;
-            }
-        """
-        
-        results = BlogPost.objects.map_reduce(map_f, reduce_f)
-        results = list(results)
-        
-        self.assertEqual(results[0].object, post1)
-        self.assertEqual(results[1].object, post2)
-        self.assertEqual(results[2].object, post3)
-
-        BlogPost.drop_collection()
-
-    def test_map_reduce_finalize(self):
-        """Ensure that map, reduce, and finalize run and introduce "scope"
-        by simulating "hotness" ranking with Reddit algorithm.
-        """
-        from time import mktime
-
-        class Link(Document):
-            title = StringField(db_field='bpTitle')
-            up_votes = IntField()
-            down_votes = IntField()
-            submitted = DateTimeField(db_field='sTime')
-
-        Link.drop_collection()
-
-        now = datetime.utcnow()
-
-        # Note: Test data taken from a custom Reddit homepage on
-        # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
-        # reflect order of insertion below, but is not influenced
-        # by insertion order.
-        Link(title = "Google Buzz auto-followed a woman's abusive ex ...",
-             up_votes = 1079,
-             down_votes = 553,
-             submitted = now-timedelta(hours=4)).save()
-        Link(title = "We did it! Barbie is a computer engineer.",
-             up_votes = 481,
-             down_votes = 124,
-             submitted = now-timedelta(hours=2)).save()
-        Link(title = "This Is A Mosquito Getting Killed By A Laser",
-             up_votes = 1446,
-             down_votes = 530,
-             submitted=now-timedelta(hours=13)).save()
-        Link(title = "Arabic flashcards land physics student in jail.",
-             up_votes = 215,
-             down_votes = 105,
-             submitted = now-timedelta(hours=6)).save()
-        Link(title = "The Burger Lab: Presenting, the Flood Burger",
-             up_votes = 48,
-             down_votes = 17,
-             submitted = now-timedelta(hours=5)).save()
-        Link(title="How to see polarization with the naked eye",
-             up_votes = 74,
-             down_votes = 13,
-             submitted = now-timedelta(hours=10)).save()
-
-        map_f = """
-            function() {
-                emit(this[~id], {up_delta: this[~up_votes] - this[~down_votes],
-                                sub_date: this[~submitted].getTime() / 1000})
-            }
-        """
-
-        reduce_f = """
-            function(key, values) {
-                data = values[0];
-
-                x = data.up_delta;
-
-                // calculate time diff between reddit epoch and submission
-                sec_since_epoch = data.sub_date - reddit_epoch;
-
-                // calculate 'Y'
-                if(x > 0) {
-                    y = 1;
-                } else if (x = 0) {
-                    y = 0;
-                } else {
-                    y = -1;
-                }
-
-                // calculate 'Z', the maximal value
-                if(Math.abs(x) >= 1) {
-                    z = Math.abs(x);
-                } else {
-                    z = 1;
-                }
-
-                return {x: x, y: y, z: z, t_s: sec_since_epoch};
-            }
-        """
-
-        finalize_f = """
-            function(key, value) {
-                // f(sec_since_epoch,y,z) = 
-                //                    log10(z) + ((y*sec_since_epoch) / 45000)
-                z_10 = Math.log(value.z) / Math.log(10);
-                weight = z_10 + ((value.y * value.t_s) / 45000);
-                return weight;
-            }
-        """
-
-        # provide the reddit epoch (used for ranking) as a variable available
-        # to all phases of the map/reduce operation: map, reduce, and finalize.
-        reddit_epoch = mktime(datetime(2005, 12, 8, 7, 46, 43).timetuple())
-        scope = {'reddit_epoch': reddit_epoch}
-
-        # run a map/reduce operation across all links. ordering is set
-        # to "-value", which orders the "weight" value returned from
-        # "finalize_f" in descending order.
-        results = Link.objects.order_by("-value")
-        results = results.map_reduce(map_f,
-                                     reduce_f,
-                                     finalize_f=finalize_f,
-                                     scope=scope)
-        results = list(results)
-
-        # assert troublesome Buzz article is ranked 1st
-        self.assertTrue(results[0].object.title.startswith("Google Buzz"))
-
-        # assert laser vision is ranked last
-        self.assertTrue(results[-1].object.title.startswith("How to see"))
-
-        Link.drop_collection()
 
     def test_item_frequencies(self):
         """Ensure that item frequencies are properly generated from lists.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             hits = IntField()
             tags = ListField(StringField(), db_field='blogTags')
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         BlogPost(hits=1, tags=['music', 'film', 'actors']).save()
         BlogPost(hits=2, tags=['music']).save()
@@ -1014,7 +829,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(f['1'], 1)
         self.assertEqual(f['2'], 2)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_average(self):
         """Ensure that field can be averaged correctly.
@@ -1061,6 +876,7 @@ class QuerySetTest(unittest.TestCase):
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             tags = ListField(StringField())
             deleted = BooleanField(default=False)
@@ -1073,7 +889,7 @@ class QuerySetTest(unittest.TestCase):
             def music_posts(doc_cls, queryset):
                 return queryset(tags='music', deleted=False)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post1 = BlogPost(tags=['music', 'film'])
         post1.save()
@@ -1089,21 +905,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual([p.id for p in BlogPost.music_posts],
                          [post1.id, post2.id])
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
         """
+        @database('mongoenginetest')
         class Comment(EmbeddedDocument):
             content = StringField(db_field='commentContent')
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField(db_field='postTitle')
             comments = ListField(EmbeddedDocumentField(Comment),
                                  db_field='postComments')
 
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         data = {'title': 'Post 1', 'comments': [Comment(content='test')]}
         post = BlogPost(**data)
@@ -1122,15 +940,16 @@ class QuerySetTest(unittest.TestCase):
                         BlogPost.objects(comments__content='test')._query)
         self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_query_pk_field_name(self):
         """Ensure that the correct "primary key" field name is used when querying
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField(primary_key=True, db_field='postTitle')
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         data = { 'title':'Post 1' }
         post = BlogPost(**data)
@@ -1140,15 +959,16 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue('_id' in BlogPost.objects(title=data['title'])._query)
         self.assertEqual(len(BlogPost.objects(pk=data['title'])), 1)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_query_value_conversion(self):
         """Ensure that query values are properly converted when necessary.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             author = ReferenceField(self.Person)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         person = self.Person(name='test', age=30)
         person.save()
@@ -1166,15 +986,16 @@ class QuerySetTest(unittest.TestCase):
         post_obj = BlogPost.objects(author__in=[person]).first()
         self.assertEqual(post.id, post_obj.id)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_update_value_conversion(self):
         """Ensure that values used in updates are converted before use.
         """
+        @database('mongoenginetest')
         class Group(Document):
             members = ListField(ReferenceField(self.Person))
 
-        Group.drop_collection()
+        Group.drop_collection(is_sure=True)
 
         user1 = self.Person(name='user1')
         user1.save()
@@ -1191,12 +1012,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(group.members[0].name, user1.name)
         self.assertEqual(group.members[1].name, user2.name)
 
-        Group.drop_collection()
+        Group.drop_collection(is_sure=True)
 
     def test_types_index(self):
         """Ensure that and index is used when '_types' is being used in a
         query.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             date = DateTimeField()
             meta = {'indexes': ['-date']}
@@ -1208,8 +1030,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue([('_types', 1)] in info)
         self.assertTrue([('_types', 1), ('date', -1)] in info)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
             meta = {'allow_inheritance': False}
@@ -1219,21 +1042,27 @@ class QuerySetTest(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         self.assertFalse([('_types', 1)] in info.values())
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def test_dict_with_custom_baseclass(self):
         """Ensure DictField working with custom base clases.
         """
+        @database('mongoenginetest')
         class Test(Document):
             testdict = DictField()
+        
 
+        items = Test.objects(testdict__f='Value')
         t = Test(testdict={'f': 'Value'})
         t.save()
+        
+        items = Test.objects(testdict__f='Value')
 
         self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 0)
         self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
-        Test.drop_collection()
-
+        Test.drop_collection(is_sure=True)
+        
+        @database('mongoenginetest')
         class Test(Document):
             testdict = DictField(basecls=StringField)
 
@@ -1242,15 +1071,16 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
         self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 1)
-        Test.drop_collection()
+        Test.drop_collection(is_sure=True)
 
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
+        @database('mongoenginetest')
         class BlogPost(Document):
             title = StringField()
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
         post_1 = BlogPost(title="Post #1")
         post_2 = BlogPost(title="Post #2")
@@ -1277,14 +1107,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(objects[post_2.id].title == post_2.title)
         self.assertTrue(objects[post_5.id].title == post_5.title)
 
-        BlogPost.drop_collection()
+        BlogPost.drop_collection(is_sure=True)
 
     def tearDown(self):
-        self.Person.drop_collection()
+        self.Person.drop_collection(is_sure=True)
 
     def test_geospatial_operators(self):
         """Ensure that geospatial queries are working.
         """
+        @database('mongoenginetest')
         class Event(Document):
             title = StringField()
             date = DateTimeField()
@@ -1293,7 +1124,7 @@ class QuerySetTest(unittest.TestCase):
             def __unicode__(self):
                 return self.title
             
-        Event.drop_collection()
+        Event.drop_collection(is_sure=True)
         
         event1 = Event(title="Coltrane Motion @ Double Door",
                        date=datetime.now() - timedelta(days=1),
@@ -1355,15 +1186,16 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0].id, event2.id)
         
-        Event.drop_collection()
+        Event.drop_collection(is_sure=True)
 
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working
         """
+        @database('mongoenginetest')
         class Point(Document):
             location = GeoPointField()
 
-        Point.drop_collection()
+        Point.drop_collection(is_sure=True)
 
         # These points are one degree apart, which (according to Google Maps)
         # is about 110 km apart at this place on the Earth.
@@ -1407,19 +1239,21 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(points.count(), 1)
         self.assertEqual(points[0].id, south_point.id)
 
-        Point.drop_collection()
+        Point.drop_collection(is_sure=True)
 
     def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used.
         """
+        @database('mongoenginetest')
         class CustomQuerySet(QuerySet):
             def not_empty(self):
                 return len(self) > 0
-
+ 
+        @database('mongoenginetest')
         class Post(Document):
             meta = {'queryset_class': CustomQuerySet}
 
-        Post.drop_collection()
+        Post.drop_collection(is_sure=True)
 
         self.assertTrue(isinstance(Post.objects, CustomQuerySet))
         self.assertFalse(Post.objects.not_empty())
@@ -1427,15 +1261,16 @@ class QuerySetTest(unittest.TestCase):
         Post().save()
         self.assertTrue(Post.objects.not_empty())
 
-        Post.drop_collection()
+        Post.drop_collection(is_sure=True)
 
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
+        @database('mongoenginetest')
         class Post(Document):
             title = StringField()
 
-        Post.drop_collection()
+        Post.drop_collection(is_sure=True)
 
         post1 = Post(title="Post 1")
         post1.save()
@@ -1445,7 +1280,7 @@ class QuerySetTest(unittest.TestCase):
         posts = Post.objects.all()[0:1]
         self.assertEqual(len(list(posts())), 1)
 
-        Post.drop_collection()
+        Post.drop_collection(is_sure=True)
 
 class QTest(unittest.TestCase):
 
@@ -1458,6 +1293,7 @@ class QTest(unittest.TestCase):
         q4 = Q(name='test')
         q5 = Q()
 
+        @database('mongoenginetest')
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -1470,11 +1306,12 @@ class QTest(unittest.TestCase):
     
     def test_q_with_dbref(self):
         """Ensure Q objects handle DBRefs correctly"""
-        connect(db='mongoenginetest')
 
+        @database('mongoenginetest')
         class User(Document):
             pass
 
+        @database('mongoenginetest')
         class Post(Document):
             created_user = ReferenceField(User)
 
@@ -1487,6 +1324,7 @@ class QTest(unittest.TestCase):
     def test_and_combination(self):
         """Ensure that Q-objects correctly AND together.
         """
+        @database('mongoenginetest')
         class TestDoc(Document):
             x = IntField()
             y = StringField()
@@ -1517,6 +1355,7 @@ class QTest(unittest.TestCase):
     def test_or_combination(self):
         """Ensure that Q-objects correctly OR together.
         """
+        @database('mongoenginetest')
         class TestDoc(Document):
             x = IntField()
 
@@ -1533,6 +1372,7 @@ class QTest(unittest.TestCase):
     def test_and_or_combination(self):
         """Ensure that Q-objects handle ANDing ORed components.
         """
+        @database('mongoenginetest')
         class TestDoc(Document):
             x = IntField()
             y = BooleanField()
@@ -1564,6 +1404,7 @@ class QTest(unittest.TestCase):
     def test_or_and_or_combination(self):
         """Ensure that Q-objects handle ORing ANDed ORed components. :)
         """
+        @database('mongoenginetest')
         class TestDoc(Document):
             x = IntField()
             y = BooleanField()

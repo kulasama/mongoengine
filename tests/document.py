@@ -12,8 +12,8 @@ from mongoengine import database
 class DocumentTest(unittest.TestCase):
     
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = _get_db()
+        connect()
+        self.db = _get_db('test')
 
         @database('test')
         class Person(Document):
@@ -35,7 +35,6 @@ class DocumentTest(unittest.TestCase):
 
     def test_dbname(self):
         self.Person(name='Test').save()
-        print self.Person.dbname
         self.Person.drop_collection(is_sure=True)
         
     def test_definition(self):
@@ -43,7 +42,8 @@ class DocumentTest(unittest.TestCase):
         """
         name_field = StringField()
         age_field = IntField()
-
+       
+        @database('test')
         class Person(Document):
             name = name_field
             age = age_field
@@ -103,10 +103,15 @@ class DocumentTest(unittest.TestCase):
 
     def test_polymorphic_queries(self):
         """Ensure that the correct subclasses are returned from a query"""
+        @database('test')
         class Animal(Document): pass
+        @database('test')
         class Fish(Animal): pass
+        @database('test')
         class Mammal(Animal): pass
+        @database('test')
         class Human(Mammal): pass
+        @database('test')
         class Dog(Mammal): pass
 
         Animal().save()
@@ -129,6 +134,7 @@ class DocumentTest(unittest.TestCase):
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
         """
+        @database('test')
         class Employee(self.Person):
             salary = IntField()
 
@@ -138,14 +144,18 @@ class DocumentTest(unittest.TestCase):
                          self.Person._meta['collection'])
 
         # Ensure that MRO error is not raised
+        @database('test')
         class A(Document): pass
+        @database('test')
         class B(A): pass
+        @database('test')
         class C(B): pass
 
     def test_allow_inheritance(self):
         """Ensure that inheritance may be disabled on simple classes and that
         _cls and _types will not be used.
         """
+        @database('test')
         class Animal(Document):
             meta = {'allow_inheritance': False}
             name = StringField()
@@ -153,6 +163,7 @@ class DocumentTest(unittest.TestCase):
         Animal.drop_collection(is_sure=True)
 
         def create_dog_class():
+            @database('test')
             class Dog(Animal):
                 pass
         self.assertRaises(ValueError, create_dog_class)
@@ -168,16 +179,19 @@ class DocumentTest(unittest.TestCase):
         Animal.drop_collection(is_sure=True)
 
         def create_employee_class():
+            @database('test')
             class Employee(self.Person):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
         
         # Test the same for embedded documents
+        @database('test')
         class Comment(EmbeddedDocument):
             content = StringField()
             meta = {'allow_inheritance': False}
 
         def create_special_comment():
+            @database('test')
             class SpecialComment(Comment):
                 pass
         self.assertRaises(ValueError, create_special_comment)
@@ -192,7 +206,8 @@ class DocumentTest(unittest.TestCase):
         collection = 'personCollTest'
         if collection in self.db.collection_names():
             self.db.drop_collection(collection)
-
+        
+        @database('test')
         class Person(Document):
             name = StringField()
             meta = {'collection': collection}
@@ -213,12 +228,15 @@ class DocumentTest(unittest.TestCase):
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
         """
+        @database('test')
         class Drink(Document):
             name = StringField()
-
+         
+        @database('test')
         class AlcoholicDrink(Drink):
             meta = {'collection': 'booze'}
 
+        @database('test')
         class Drinker(Document):
             drink = GenericReferenceField()
 
@@ -244,6 +262,7 @@ class DocumentTest(unittest.TestCase):
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
         """
+        @database('test')
         class Log(Document):
             date = DateTimeField(default=datetime.now)
             meta = {
@@ -270,6 +289,7 @@ class DocumentTest(unittest.TestCase):
 
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
+            @database('test')
             class Log(Document):
                 date = DateTimeField(default=datetime.now)
                 meta = {
@@ -284,6 +304,7 @@ class DocumentTest(unittest.TestCase):
     def test_indexes(self):
         """Ensure that indexes are used when meta[indexes] is specified.
         """
+        @database('test')
         class BlogPost(Document):
             date = DateTimeField(db_field='addDate', default=datetime.now)
             category = StringField()
@@ -331,6 +352,7 @@ class DocumentTest(unittest.TestCase):
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
         """
+        @database('test')
         class BlogPost(Document):
             title = StringField()
             slug = StringField(unique=True)
@@ -347,6 +369,7 @@ class DocumentTest(unittest.TestCase):
         class Date(EmbeddedDocument):
             year = IntField(db_field='yr')
 
+        @database('test')
         class BlogPost(Document):
             title = StringField()
             date = EmbeddedDocumentField(Date)
@@ -370,6 +393,7 @@ class DocumentTest(unittest.TestCase):
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
         """
+        @database('test')
         class User(Document):
             username = StringField(primary_key=True)
             name = StringField()
@@ -504,6 +528,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person_obj['age'], 30)
         self.assertEqual(person_obj['_id'], person.id)
         # Test skipping validation on save
+        @database('test')
         class Recipient(Document):
             email = EmailField(required=True)
         
@@ -550,9 +575,11 @@ class DocumentTest(unittest.TestCase):
     def test_save_list(self):
         """Ensure that a list field may be properly saved.
         """
+        @database('test')
         class Comment(EmbeddedDocument):
             content = StringField()
-
+        
+        @database('test')
         class BlogPost(Document):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
@@ -601,7 +628,7 @@ class DocumentTest(unittest.TestCase):
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.
         """
-        
+        @database('test')
         class BlogPost(Document):
             meta = {'collection': 'blogpost_1'}
             content = StringField()
@@ -640,9 +667,11 @@ class DocumentTest(unittest.TestCase):
     def test_document_hash(self):
         """Test document in list, dict, set
         """
+        @database('test')
         class User(Document):
             pass
 
+        @database('test')
         class BlogPost(Document):
             pass
         

@@ -1,7 +1,7 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
 from queryset import OperationError
-from connection import _get_db,_get_connection
+from connection import _get_db
 
 import pymongo
 
@@ -123,17 +123,11 @@ class Document(BaseDocument):
         :class:`~mongoengine.Document` type from the database.
         """
         if is_sure:
-           db = _get_db()
+           db = _get_db(cls.dbname)
            db.drop_collection(cls._meta['collection'])
     
 
-def database(dbname):
 
-    def f(doc):
-        doc.dbname = dbname
-        return doc
-
-    return f
 
 class MapReduceDocument(object):
     """A document returned from a map/reduce query.
